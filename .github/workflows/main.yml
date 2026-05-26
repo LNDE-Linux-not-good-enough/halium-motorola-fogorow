@@ -40,6 +40,8 @@ jobs:
 
           # 2. Czyszczenie twardo zapisanych ścieżek do nieistniejących plików z białej listy Google
           sed -i 's|CONFIG_UNUSED_KSYMS_WHITELIST=.*|# CONFIG_UNUSED_KSYMS_WHITELIST is not set|' .config
+          # Całkowite wyłączenie traktowania ostrzeżeń jako błędy krytyczne
+          sed -i 's/CONFIG_WERROR=y/# CONFIG_WERROR is not set/' .config
 
           # Skrypt używa pliku sprawdzającego obecnego bezpośrednio w Twoim repozytorium
           chmod +x ./check-kernel-config
