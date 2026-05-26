@@ -22,7 +22,7 @@ jobs:
           wget https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu-a/10.3-2021.07/binrel/gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu.tar.xz
           tar -xf gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu.tar.xz -C toolchain --strip-components=1
 
-      - name: Przygotowanie konfiguracji i Patch Halium (Z lokalnych plików)
+            - name: Przygotowanie konfiguracji i Patch Halium (Z lokalnych plików)
         run: |
           export ARCH=arm64
           export PATH=$GITHUB_WORKSPACE/toolchain/bin:$PATH
@@ -30,7 +30,8 @@ jobs:
           
           # Kopiujemy Twój plik z telefonu jako bazowy .config
           cp my-config .config
-          # 1. Wyłączenie androidowego sprawdzania ABI oraz mechanizmu AUTOKSYMS (Naprawia Error 1)
+
+          # 1. Wstępne czyszczenie i wyłączenie weryfikacji ABI Androida
           sed -i \
             -e 's/CONFIG_MODVERSIONS=y/# CONFIG_MODVERSIONS is not set/' \
             -e 's/CONFIG_UNUSED_KSYMS_WHITELIST=y/# CONFIG_UNUSED_KSYMS_WHITELIST is not set/' \
@@ -38,22 +39,26 @@ jobs:
             -e 's/CONFIG_AUTOKSYMS=y/# CONFIG_AUTOKSYMS is not set/' \
             .config
 
-          # 2. Czyszczenie twardo zapisanych ścieżek do nieistniejących plików z białej listy Google
           sed -i 's|CONFIG_UNUSED_KSYMS_WHITELIST=.*|# CONFIG_UNUSED_KSYMS_WHITELIST is not set|' .config
-          # Całkowite wyłączenie traktowania ostrzeżeń jako błędy krytyczne
           sed -i 's/CONFIG_WERROR=y/# CONFIG_WERROR is not set/' .config
-                    sed -i \
+
+          # 2. GLOBALNE DODANIE KATALOGÓW UAPI DO ŚCIEŻKI KOMPILATORA
+          # Wstrzykujemy flagę -Iinclude/uapi do głównych zmiennych LINUXINCLUDE w Makefile
+          sed -i 's|LINUXINCLUDE    :=|LINUXINCLUDE    := -I$(srctree)/include/uapi |' Makefile
+
+          # 3. Uruchomienie skryptu sprawdzającego Halium (Dopisze wymagane opcje)
+          chmod +x ./check-kernel-config
+          ./check-kernel-config .config -w
+
+          # 4. WYMUSZONE WYŁĄCZENIE (Po skrypcie Halium, żeby nie włączył ich z powrotem)
+          sed -i \
             -e 's/CONFIG_NETFILTER_XT_MATCH_MARK=y/# CONFIG_NETFILTER_XT_MATCH_MARK is not set/' \
             -e 's/CONFIG_NETFILTER_XT_CONNMARK=y/# CONFIG_NETFILTER_XT_CONNMARK is not set/' \
             -e 's/CONFIG_NETFILTER_XT_TARGET_MARK=y/# CONFIG_NETFILTER_XT_TARGET_MARK is not set/' \
             .config
-          # Skrypt używa pliku sprawdzającego obecnego bezpośrednio w Twoim repozytorium
-          chmod +x ./check-kernel-config
-          ./check-kernel-config .config -w
-          
-          # Odświeżenie pliku konfiguracyjnego w celu wyliczenia zależności
-          make olddefconfig
 
+          # 5. Odświeżenie pliku konfiguracyjnego z jawnym przekazaniem architektury
+          make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- olddefconfig
       - name: Kompilacja w chmurze przy użyciu ARM GNU Toolchain
         run: |
           export ARCH=arm64
