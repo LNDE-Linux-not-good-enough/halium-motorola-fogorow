@@ -1,0 +1,60 @@
+name: Kompilacja z własnego repo i ARM Toolchain
+
+on:
+  workflow_dispatch: # Ręczne uruchomienie przyciskiem
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Instalacja potrzebnych pakietów systemowych
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc build-essential libncurses5-dev libssl-dev flex bison libelf-dev git wget tar
+
+      - name: Klonowanie Twojego forka (Wszystkie źródła jądra + pliki)
+        uses: actions/checkout@v4
+
+      - name: Pobieranie oficjalnego ARM GNU Toolchain
+        run: |
+          mkdir -p toolchain
+          # Pobieranie oficjalnego kompilatora ARM GNU dla architektury AArch64 (wersja 13.3.Rel1)https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu-a/10.3-2021.07/binrel/gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu.tar.xzF882931F13D985ADA554B
+          wget https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu-a/10.3-2021.07/binrel/gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu.tar.xz
+          tar -xf gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu.tar.xz-C toolchain --strip-components=1
+
+      - name: Przygotowanie konfiguracji i Patch Halium (Z lokalnych plików)
+        run: |
+          export ARCH=arm64
+          export PATH=$GITHUB_WORKSPACE/toolchain/bin:$PATH
+          export CROSS_COMPILE=aarch64-none-linux-gnu-
+          
+          # Kopiujemy Twój plik z telefonu jako bazowy .config
+          cp fogo_defconfig .config
+          
+          # Skrypt używa pliku sprawdzającego obecnego bezpośrednio w Twoim repozytorium
+          chmod +x ./halium/check-kernel-config
+          ./halium/check-kernel-config .config -w
+          
+          # Odświeżenie pliku konfiguracyjnego w celu wyliczenia zależności
+          make olddefconfig
+
+      - name: Kompilacja w chmurze przy użyciu ARM GNU Toolchain
+        run: |
+          export ARCH=arm64
+          export PATH=$GITHUB_WORKSPACE/toolchain/bin:$PATH
+          export CROSS_COMPILE=aarch64-none-linux-gnu-
+          
+          # Kompilacja jądra z użyciem wszystkich dostępnych rdzeni serwera
+          make -j$(nproc)
+
+      - name: Pakowanie i udostępnienie obrazu jądra
+        run: |
+          mkdir output
+          # Kopiuje Image.gz lub Image.gz-dtb (zależnie od tego, co wygeneruje Twój kernel)
+          cp arch/arm64/boot/Image.gz output/ || cp arch/arm64/boot/Image.gz-dtb output/ || echo "Brak standardowych obrazów"
+
+      - name: Upload gotowego jądra
+        uses: actions/upload-artifact@v4
+        with:
+          name: Moje_Jadro_ARM_GNU_Halium14
+          path: output/
