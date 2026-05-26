@@ -43,11 +43,18 @@ jobs:
           sed -i 's/CONFIG_WERROR=y/# CONFIG_WERROR is not set/' .config
   
           # =====================================================================
-          # 2. BRUTALNY FIX DLA NETFILTER (Czyszczenie plików .c do zera)
+          # 2. FIX DLA CASE-SENSITIVITY (xt_mark, xt_connmark oraz xt_DSCP)
           # =====================================================================
-          # Zerujemy zawartość zepsutych plików, aby kompilator skompilował je jako puste drajwery
+          # Naprawa brakującego pliku xt_DSCP.c z powodu konfliktów wielkości liter
+          if [ -f net/netfilter/xt_dscp.c ]; then
+            cp net/netfilter/xt_dscp.c net/netfilter/xt_DSCP.c
+          fi
+
+          # Zerujemy zawartość problematycznych plików, aby skompilowały się jako puste moduły
           truncate -s 0 net/netfilter/xt_mark.c
           truncate -s 0 net/netfilter/xt_connmark.c
+          truncate -s 0 net/netfilter/xt_dscp.c
+          truncate -s 0 net/netfilter/xt_DSCP.c
   
           # 3. Uruchomienie skryptu sprawdzającego Halium (Dopisze wymagane opcje)
           chmod +x ./check-kernel-config
@@ -62,7 +69,6 @@ jobs:
   
           # 5. Odświeżenie pliku konfiguracyjnego z jawnym przekazaniem architektury
           make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- olddefconfig
-
       - name: Kompilacja w chmurze przy użyciu ARM GNU Toolchain
         run: |
           export ARCH=arm64
