@@ -32,7 +32,7 @@ jobs:
           cp my-config .config
           
           # Skrypt używa pliku sprawdzającego obecnego bezpośrednio w Twoim repozytorium
-          chmod +x ./halium/check-kernel-config
+          chmod +x ./check-kernel-config
           ./check-kernel-config .config -w
           
           # Odświeżenie pliku konfiguracyjnego w celu wyliczenia zależności
