@@ -30,7 +30,17 @@ jobs:
           
           # Kopiujemy Twój plik z telefonu jako bazowy .config
           cp my-config .config
-          
+          # 1. Wyłączenie androidowego sprawdzania ABI oraz mechanizmu AUTOKSYMS (Naprawia Error 1)
+          sed -i \
+            -e 's/CONFIG_MODVERSIONS=y/# CONFIG_MODVERSIONS is not set/' \
+            -e 's/CONFIG_UNUSED_KSYMS_WHITELIST=y/# CONFIG_UNUSED_KSYMS_WHITELIST is not set/' \
+            -e 's/CONFIG_TRIM_UNUSED_KSYMS=y/# CONFIG_TRIM_UNUSED_KSYMS is not set/' \
+            -e 's/CONFIG_AUTOKSYMS=y/# CONFIG_AUTOKSYMS is not set/' \
+            .config
+
+          # 2. Czyszczenie twardo zapisanych ścieżek do nieistniejących plików z białej listy Google
+          sed -i 's|CONFIG_UNUSED_KSYMS_WHITELIST=.*|# CONFIG_UNUSED_KSYMS_WHITELIST is not set|' .config
+
           # Skrypt używa pliku sprawdzającego obecnego bezpośrednio w Twoim repozytorium
           chmod +x ./check-kernel-config
           ./check-kernel-config .config -w
