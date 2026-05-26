@@ -29,7 +29,7 @@ jobs:
           export CROSS_COMPILE=aarch64-none-linux-gnu-
           
           # Kopiujemy Twój plik z telefonu jako bazowy .config
-          cp fogo_defconfig .config
+          cp my-config .config
           
           # Skrypt używa pliku sprawdzającego obecnego bezpośrednio w Twoim repozytorium
           chmod +x ./halium/check-kernel-config
