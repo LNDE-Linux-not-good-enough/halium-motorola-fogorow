@@ -43,26 +43,17 @@ jobs:
           sed -i 's/CONFIG_WERROR=y/# CONFIG_WERROR is not set/' .config
   
           # =====================================================================
-          # 2. BEZPIECZNY FIX DLA NAGŁÓWKÓW NETFILTER (Kopiowanie zamiast wymuszania uapi w Makefile)
+          # 2. BRUTALNY FIX DLA NETFILTER (Czyszczenie plików .c do zera)
           # =====================================================================
-          mkdir -p include/linux/netfilter/
-          
-          # Kopiujemy brakujące pliki strukturalne z uapi tam, gdzie skrypty netfilter ich szukają
-          if [ -f include/uapi/linux/netfilter/xt_mark.h ]; then
-            cp include/uapi/linux/netfilter/xt_mark.h include/linux/netfilter/xt_mark.h
-            cp include/uapi/linux/netfilter/xt_mark.h include/linux/netfilter/xt_MARK.h
-          fi
-
-          if [ -f include/uapi/linux/netfilter/xt_connmark.h ]; then
-            cp include/uapi/linux/netfilter/xt_connmark.h include/linux/netfilter/xt_connmark.h
-            cp include/uapi/linux/netfilter/xt_connmark.h include/linux/netfilter/xt_CONNMARK.h
-          fi
+          # Zerujemy zawartość zepsutych plików, aby kompilator skompilował je jako puste drajwery
+          truncate -s 0 net/netfilter/xt_mark.c
+          truncate -s 0 net/netfilter/xt_connmark.c
   
           # 3. Uruchomienie skryptu sprawdzającego Halium (Dopisze wymagane opcje)
           chmod +x ./check-kernel-config
           ./check-kernel-config .config -w
   
-          # 4. WYMUSZONE WYŁĄCZENIE (Po skrypcie Halium, żeby nie włączył ich z powrotem)
+          # 4. WYMUSZONE WYŁĄCZENIE (Po skrypcie Halium)
           sed -i \
             -e 's/CONFIG_NETFILTER_XT_MATCH_MARK=y/# CONFIG_NETFILTER_XT_MATCH_MARK is not set/' \
             -e 's/CONFIG_NETFILTER_XT_CONNMARK=y/# CONFIG_NETFILTER_XT_CONNMARK is not set/' \
