@@ -33,7 +33,7 @@ jobs:
           
           # Skrypt używa pliku sprawdzającego obecnego bezpośrednio w Twoim repozytorium
           chmod +x ./halium/check-kernel-config
-          ./halium/check-kernel-config .config -w
+          ./check-kernel-config .config -w
           
           # Odświeżenie pliku konfiguracyjnego w celu wyliczenia zależności
           make olddefconfig
