@@ -22,7 +22,7 @@ jobs:
           wget https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu-a/10.3-2021.07/binrel/gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu.tar.xz
           tar -xf gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu.tar.xz -C toolchain --strip-components=1
 
-      - name: Przygotowanie konfiguracji i Patch Halium (Z lokalnych plików)
+            - name: Przygotowanie konfiguracji i Patch Halium (Z lokalnych plików)
         run: |
           export ARCH=arm64
           export PATH=$GITHUB_WORKSPACE/toolchain/bin:$PATH
@@ -42,9 +42,21 @@ jobs:
           sed -i 's|CONFIG_UNUSED_KSYMS_WHITELIST=.*|# CONFIG_UNUSED_KSYMS_WHITELIST is not set|' .config
           sed -i 's/CONFIG_WERROR=y/# CONFIG_WERROR is not set/' .config
   
-          # 2. GLOBALNE DODANIE KATALOGÓW UAPI DO ŚCIEŻKI KOMPILATORA
-          # Wstrzykujemy flagę -Iinclude/uapi do głównych zmiennych LINUXINCLUDE w Makefile
-          sed -i 's|LINUXINCLUDE    :=|LINUXINCLUDE    := -I$(srctree)/include/uapi |' Makefile
+          # =====================================================================
+          # 2. BEZPIECZNY FIX DLA NAGŁÓWKÓW NETFILTER (Kopiowanie zamiast wymuszania uapi w Makefile)
+          # =====================================================================
+          mkdir -p include/linux/netfilter/
+          
+          # Kopiujemy brakujące pliki strukturalne z uapi tam, gdzie skrypty netfilter ich szukają
+          if [ -f include/uapi/linux/netfilter/xt_mark.h ]; then
+            cp include/uapi/linux/netfilter/xt_mark.h include/linux/netfilter/xt_mark.h
+            cp include/uapi/linux/netfilter/xt_mark.h include/linux/netfilter/xt_MARK.h
+          fi
+
+          if [ -f include/uapi/linux/netfilter/xt_connmark.h ]; then
+            cp include/uapi/linux/netfilter/xt_connmark.h include/linux/netfilter/xt_connmark.h
+            cp include/uapi/linux/netfilter/xt_connmark.h include/linux/netfilter/xt_CONNMARK.h
+          fi
   
           # 3. Uruchomienie skryptu sprawdzającego Halium (Dopisze wymagane opcje)
           chmod +x ./check-kernel-config
